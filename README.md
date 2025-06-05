@@ -1,4 +1,6 @@
-# 🦦 OkaryMsc 🦦
+<h1 align="center">
+  🦦 OkaryMsc 🦦
+</h1>
 
 <div align="center">
   <img src="./assets/apiImg/okarys-logo.png" alt="Okarys Logo" width="300">
