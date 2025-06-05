@@ -1,0 +1,137 @@
+type Query {
+  # Canciones
+  cancion(id: ID!): Cancion
+  canciones(limit: Int): CancionSubList
+
+  # Playlists
+  playlist(id: ID!): Playlist
+  playlists(limit: Int): PlaylistSubList
+  playlistsByUser(userId: ID!): [Playlist]
+
+  # Álbumes
+  album(id: ID!): Album
+  albums(limit: Int): AlbumSubList
+
+  # Usuarios
+  usuario(id: ID!): Usuario
+  usuarios(limit: Int): UsuarioSubList
+}
+
+# Tipo Canción
+type Cancion {
+  id: ID!
+  title: String!
+  artist: String!
+  album: String
+  genre: String
+  duration: Int
+  lyrics: String
+  photo: String
+}
+
+type CancionSubList {
+  items: [Cancion]
+}
+
+# Tipo Playlist
+type Playlist {
+  id: ID!
+  name: String!
+  description: String
+  user: Usuario
+  canciones: [Cancion]
+}
+
+type PlaylistSubList {
+  items: [Playlist]
+}
+
+# Tipo Album
+type Album {
+  id: ID!
+  title: String!
+  artist: String!
+  year: Int
+  genre: String
+  photo: String
+}
+
+type AlbumSubList {
+  items: [Album]
+}
+
+# Tipo Usuario
+type Usuario {
+  id: ID!
+  username: String!
+  email: String!
+  role: String
+  playlists: [Playlist]
+}
+
+type UsuarioSubList {
+  items: [Usuario]
+}
+
+# Mutations
+type Mutation {
+  # Canciones
+  crearCancion(input: CancionInput!): Cancion
+  actualizarCancion(id: ID!, input: CancionInput!): Cancion
+  eliminarCancion(id: ID!): Cancion
+
+  # Playlists
+  crearPlaylist(input: PlaylistInput!): Playlist
+  actualizarPlaylist(id: ID!, input: PlaylistInput!): Playlist
+  eliminarPlaylist(id: ID!): Playlist
+  agregarCancionAPlaylist(playlistId: ID!, songId: ID!): Playlist
+  quitarCancionDePlaylist(playlistId: ID!, songId: ID!): Playlist
+
+  # Álbumes
+  crearAlbum(input: AlbumInput!): Album
+  actualizarAlbum(id: ID!, input: AlbumInput!): Album
+  eliminarAlbum(id: ID!): Album
+   
+  # Usuarios
+  crearUsuario(input: UsuarioInput!): Usuario
+  actualizarUsuario(id: ID!, input: UsuarioUpdateInput!): Usuario
+  eliminarUsuario(id: ID!): Usuario
+}
+
+# Inputs
+input CancionInput {
+  title: String!
+  artist: String!
+  album: String
+  genre: String
+  duration: Int
+  lyrics: String
+  photo: String
+}
+
+input PlaylistInput {
+  name: String!
+  description: String
+  userId: ID!
+}
+
+input AlbumInput {
+  title: String!
+  artist: String!
+  year: Int
+  genre: String
+  photo: String
+}
+
+input UsuarioInput {
+  username: String!
+  email: String!
+  password: String!
+  role: String
+}
+
+input UsuarioUpdateInput {
+  username: String!
+  email: String!
+  role: String
+}
