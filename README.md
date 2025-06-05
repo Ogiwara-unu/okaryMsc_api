@@ -1,11 +1,12 @@
 # 🦦 OkaryMsc 🦦
 
-![Okarys Logo](./assets/apiImg/okarys-logo.png)
+<div align="center">
+  <img src="./okarys-logo.png" alt="Okarys Logo" width="300">
+</div>
 
 ¡Bienvenido a tu API de música! Esta API te permite gestionar canciones, playlists, artistas y álbumes de forma eficiente y moderna utilizando **GraphQL**, **Express**, **SQLite** y **autenticación JWT**.
 
 ---
-
 ## 👥 Creadores
 
 Este proyecto fue desarrollado por:
