@@ -9,11 +9,76 @@ import { readFile } from "node:fs/promises";
 import { authMiddleware, getToken, decodeToken } from "./auth.js";
 import { useServer } from 'graphql-ws/use/ws';
 import { WebSocketServer } from 'ws';
+import path from 'path';
+import multer from 'multer';
+import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs';
+import { uploadAlbumImage, saveAlbumImage } from './services/albumFileService.js';
 
 const PORT = 9001;
 const app = express();
-app.use(cors(), express.json(), authMiddleware);
 
+// 1. Configuración de Multer para subida de archivos
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = path.join(process.cwd(), 'assets', 'img', 'song');
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `${uuidv4()}${ext}`);
+  }
+});
+
+const upload = multer({ 
+  storage,
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/svg+xml'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Tipo de archivo no permitido'));
+    }
+  },
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+});
+
+// Middlewares
+app.use(cors());
+app.use(express.json());
+app.use(authMiddleware);
+
+// 2. Ruta para servir imágenes estáticas
+app.use('/images/songs', express.static(path.join(process.cwd(), 'assets', 'img', 'song')));
+app.use('/images/albums', express.static(path.join(process.cwd(), 'assets', 'img', 'album')));
+
+
+// 3. Ruta REST para prueba de subida de imágenes 
+app.post('/api/upload-song-image', upload.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No se subió ningún archivo' });
+  }
+  res.json({
+    filename: req.file.filename,
+    url: `/images/songs/${req.file.filename}`
+  });
+});
+
+// 4. Ruta REST para subir imágenes de álbumes
+app.post('/api/upload-album-image', uploadAlbumImage.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No se subió ningún archivo' });
+  }
+  res.json({
+    filename: req.file.filename,
+    url: `/images/albums/${req.file.filename}`
+  });
+});
+
+// Resto de tu configuración existente
 app.post('/login', getToken);
 
 const typeDefs = await readFile('./schema.graphql', 'utf8');
@@ -43,14 +108,19 @@ useServer({ schema: graphSchema, context: getWsContext }, wsServer);
 
 app.use('/okaryMsc', middleware(graphServer, { context: getContext }));
 
-// Middleware de manejo de errores para tokens inválidos o expirados
+// Middleware de manejo de errores
 app.use((err, req, res, next) => {
-    if (err.name === 'UnauthorizedError') {
+    if (err instanceof multer.MulterError) {
+        return res.status(400).json({ error: err.message });
+    } else if (err.name === 'UnauthorizedError') {
         return res.status(401).json({ error: 'Token inválido o expirado' });
     }
-    next(err);
+    console.error(err);
+    res.status(500).json({ error: 'Error interno del servidor' });
 });
 
 httpServer.listen({ port: PORT }, () => {
     console.log(`Servidor corriendo en: http://localhost:${PORT}/okaryMsc`);
+    console.log(`Ruta de imágenes: http://localhost:${PORT}/images/songs`);
+    console.log(`Ruta de imágenes álbumes: http://localhost:${PORT}/images/albums`);
 });

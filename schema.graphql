@@ -2,6 +2,7 @@ type Query {
   # Canciones
   cancion(id: ID!): Cancion
   canciones(limit: Int): CancionSubList
+  getSongImage(filename: String!): ImageResult
 
   # Playlists
   playlist(id: ID!): Playlist
@@ -11,6 +12,7 @@ type Query {
   # Álbumes
   album(id: ID!): Album
   albums(limit: Int): AlbumSubList
+  getAlbumImage(filename: String!): ImageResult
 
   # Usuarios
   usuario(id: ID!): Usuario
@@ -32,6 +34,18 @@ type Cancion {
 type CancionSubList {
   items: [Cancion]
 }
+
+type ImageUploadResult {
+  filename: String!
+  url: String!
+}
+
+type ImageResult {
+  file: String!  # Base64 encoded
+  contentType: String!
+}
+
+scalar Upload
 
 # Tipo Playlist
 type Playlist {
@@ -79,6 +93,7 @@ type Mutation {
   crearCancion(input: CancionInput!): Cancion
   actualizarCancion(id: ID!, input: CancionInput!): Cancion
   eliminarCancion(id: ID!): Cancion
+   uploadSongImage(file: Upload!): ImageUploadResult
 
   # Playlists
   crearPlaylist(input: PlaylistInput!): Playlist
@@ -91,6 +106,7 @@ type Mutation {
   crearAlbum(input: AlbumInput!): Album
   actualizarAlbum(id: ID!, input: AlbumInput!): Album
   eliminarAlbum(id: ID!): Album
+  uploadAlbumImage(file: Upload!): ImageUploadResult
    
   # Usuarios
   crearUsuario(input: UsuarioInput!): Usuario

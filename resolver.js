@@ -41,6 +41,10 @@ import {
   deleteUser
 } from "./services/user.js";
 
+import { requireAuth } from "./helper/requireAuth.js";
+import { uploadSongImage, getSongImage } from './services/fileService.js';
+import { saveAlbumImage, getAlbumImage } from './services/albumFileService.js';
+
 export const resolvers = {
   Query: {
     // Canciones
@@ -56,6 +60,21 @@ export const resolvers = {
     canciones: async (_root, { limit }) => {
       const items = await getSongs(limit);
       return { items };
+    },
+
+    getSongImage: async (_root, { filename }) => {
+      const result = await getSongImage(filename);
+      
+      if (result.status !== 200) {
+        throw new GraphQLError(result.message, {
+          extensions: { code: result.status === 404 ? "NOT_FOUND" : "INTERNAL_SERVER_ERROR" }
+        });
+      }
+      
+      return {
+        file: result.file.toString('base64'),
+        contentType: result.contentType
+      };
     },
 
     // Playlists
@@ -91,6 +110,21 @@ export const resolvers = {
       const items = await getAlbums(limit);
       return { items };
     },
+     getAlbumImage: async (_root, { filename }) => {
+      const result = await getAlbumImage(filename);
+      
+      if (result.status !== 200) {
+        throw new GraphQLError(result.message, {
+          extensions: { code: result.status === 404 ? "NOT_FOUND" : "INTERNAL_SERVER_ERROR" }
+        });
+      }
+      
+      return {
+        file: result.file.toString('base64'),
+        contentType: result.contentType
+      };
+    },
+
      // Usuarios
     usuario: async (_root, { id }) => {
       const user = await getUser(id);
@@ -121,7 +155,8 @@ export const resolvers = {
 
   Mutation: {
     // Canciones
-    crearCancion: async (_root, { input }) => {
+    crearCancion: async (_root, { input }, context) => {
+      requireAuth(context, ['admin']);
       try {
         const song = await addSong(input);
         return song;
@@ -131,7 +166,8 @@ export const resolvers = {
         });
       }
     },
-    actualizarCancion: async (_root, { id, input }) => {
+    actualizarCancion: async (_root, { id, input }, context) => {
+      requireAuth(context, ['admin']);
       try {
         const song = await updateSong(id, input);
         return song;
@@ -141,7 +177,8 @@ export const resolvers = {
         });
       }
     },
-    eliminarCancion: async (_root, { id }) => {
+    eliminarCancion: async (_root, { id }, context) => {
+      requireAuth(context, ['admin']);
       try {
         const song = await deleteSong(id);
         return song;
@@ -152,8 +189,56 @@ export const resolvers = {
       }
     },
 
+    /**
+     * Sube una imagen para una canción
+     */
+    uploadSongImage: async (_root, { file }, context) => {
+      requireAuth(context, ['admin']);
+      
+      try {
+        const { createReadStream, filename, mimetype } = await file;
+        const stream = createReadStream();
+        
+        // Guardar el archivo temporalmente
+        const filePath = `/tmp/${uuidv4()}-${filename}`;
+        await new Promise((resolve, reject) =>
+          stream
+            .pipe(fs.createWriteStream(filePath))
+            .on('finish', resolve)
+            .on('error', reject)
+        );
+        
+        // Procesar el archivo
+        const result = await uploadSongImage({
+          path: filePath,
+          originalname: filename,
+          mimetype
+        });
+        
+        // Eliminar el archivo temporal
+        fs.unlinkSync(filePath);
+        
+        if (result.status !== 201) {
+          throw new GraphQLError(result.message, {
+            extensions: { code: "UPLOAD_ERROR" }
+          });
+        }
+        
+        return {
+          filename: result.filename,
+          url: `/images/songs/${result.filename}`
+        };
+      } catch (error) {
+        throw new GraphQLError("Error al subir la imagen", {
+          extensions: { code: "INTERNAL_SERVER_ERROR", details: error.message }
+        });
+      }
+    },
+  
+
     // Playlists
-    crearPlaylist: async (_root, { input }) => {
+    crearPlaylist: async (_root, { input }, context) => {
+      requireAuth(context, ['admin', 'user']);
       try {
         const playlist = await addPlaylist(input);
         return playlist;
@@ -163,7 +248,8 @@ export const resolvers = {
         });
       }
     },
-    actualizarPlaylist: async (_root, { id, input }) => {
+    actualizarPlaylist: async (_root, { id, input }, context) => {
+      requireAuth(context, ['admin', 'user']);
       try {
         const playlist = await updatePlaylist(id, input);
         return playlist;
@@ -173,7 +259,8 @@ export const resolvers = {
         });
       }
     },
-    eliminarPlaylist: async (_root, { id }) => {
+    eliminarPlaylist: async (_root, { id }, context) => {
+      requireAuth(context, ['admin', 'user']);
       try {
         const playlist = await deletePlaylist(id);
         return playlist;
@@ -183,7 +270,8 @@ export const resolvers = {
         });
       }
     },
-    agregarCancionAPlaylist: async (_root, { playlistId, songId }) => {
+    agregarCancionAPlaylist: async (_root, { playlistId, songId }, context) => {
+      requireAuth(context, ['admin', 'user']);
       try {
         await addSongToPlaylist(playlistId, songId);
         const playlist = await getPlaylist(playlistId);
@@ -194,7 +282,8 @@ export const resolvers = {
         });
       }
     },
-    quitarCancionDePlaylist: async (_root, { playlistId, songId }) => {
+    quitarCancionDePlaylist: async (_root, { playlistId, songId }, context) => {
+      requireAuth(context, ['admin', 'user']);
       try {
         await removeSongFromPlaylist(playlistId, songId);
         const playlist = await getPlaylist(playlistId);
@@ -207,7 +296,8 @@ export const resolvers = {
     },
 
     // Álbumes
-    crearAlbum: async (_root, { input }) => {
+    crearAlbum: async (_root, { input }, context) => {
+      requireAuth(context, ['admin', 'user']);
       try {
         const album = await addAlbum(input);
         return album;
@@ -217,7 +307,8 @@ export const resolvers = {
         });
       }
     },
-    actualizarAlbum: async (_root, { id, input }) => {
+    actualizarAlbum: async (_root, { id, input }, context) => {
+      requireAuth(context, ['admin', 'user']);
       try {
         const album = await updateAlbum(id, input);
         return album;
@@ -227,12 +318,53 @@ export const resolvers = {
         });
       }
     },
-    eliminarAlbum: async (_root, { id }) => {
+    eliminarAlbum: async (_root, { id }, context) => {
+      requireAuth(context, ['admin', 'user']);
       try {
         const album = await deleteAlbum(id);
         return album;
       } catch (error) {
         throw new GraphQLError("Error al eliminar el álbum", {
+          extensions: { code: "INTERNAL_SERVER_ERROR", details: error.message }
+        });
+      }
+    },
+
+    uploadAlbumImage: async (_root, { file }, context) => {
+      requireAuth(context, ['admin', 'user']);
+      
+      try {
+        const { createReadStream, filename, mimetype } = await file;
+        const stream = createReadStream();
+        
+        const filePath = `/tmp/${uuidv4()}-${filename}`;
+        await new Promise((resolve, reject) =>
+          stream
+            .pipe(fs.createWriteStream(filePath))
+            .on('finish', resolve)
+            .on('error', reject)
+        );
+        
+        const result = await saveAlbumImage({
+          path: filePath,
+          originalname: filename,
+          mimetype
+        });
+        
+        fs.unlinkSync(filePath);
+        
+        if (result.status !== 201) {
+          throw new GraphQLError(result.message, {
+            extensions: { code: "UPLOAD_ERROR" }
+          });
+        }
+        
+        return {
+          filename: result.filename,
+          url: `/images/albums/${result.filename}`
+        };
+      } catch (error) {
+        throw new GraphQLError("Error al subir la imagen del álbum", {
           extensions: { code: "INTERNAL_SERVER_ERROR", details: error.message }
         });
       }
@@ -256,7 +388,8 @@ export const resolvers = {
       }
     },
 
-    actualizarUsuario: async (_root, { id, input }) => {
+    actualizarUsuario: async (_root, { id, input }, context) => {
+      requireAuth(context, ['admin', 'user']);
       try {
         const user = await updateUser(id, input);
         return user;
@@ -267,7 +400,8 @@ export const resolvers = {
       }
     },
 
-    eliminarUsuario: async (_root, { id }) => {
+    eliminarUsuario: async (_root, { id }, context) => {
+      requireAuth(context, ['admin']);
       try {
         const user = await deleteUser(id);
         return user;
