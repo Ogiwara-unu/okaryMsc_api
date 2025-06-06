@@ -1,5 +1,5 @@
 <h1 align="center">
-   OkaryMsc 🦦
+   OkaryMsc 
 </h1>
 
 <div align="center">
