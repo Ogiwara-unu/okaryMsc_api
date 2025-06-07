@@ -25,7 +25,7 @@ export async function getToken(req, res) {
         }
         const token = jwt.sign(claims, secret, { expiresIn: '2h' });
         
-        // Devolver tanto el token como la info del usuario
+        // Devolver tanto el token como la info del usuario logeado
         res.json({ 
             token,
             user: {
