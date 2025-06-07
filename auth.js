@@ -24,7 +24,17 @@ export async function getToken(req, res) {
             role: user.role
         }
         const token = jwt.sign(claims, secret, { expiresIn: '2h' });
-        res.json({ token });
+        
+        // Devolver tanto el token como la info del usuario
+        res.json({ 
+            token,
+            user: {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                role: user.role
+            }
+        });
     }
 }
 
