@@ -297,7 +297,7 @@ export const resolvers = {
 
     // Álbumes
     crearAlbum: async (_root, { input }, context) => {
-      requireAuth(context, ['admin', 'user']);
+      requireAuth(context, ['admin']);
       try {
         const album = await addAlbum(input);
         return album;
@@ -308,7 +308,7 @@ export const resolvers = {
       }
     },
     actualizarAlbum: async (_root, { id, input }, context) => {
-      requireAuth(context, ['admin', 'user']);
+      requireAuth(context, ['admin']);
       try {
         const album = await updateAlbum(id, input);
         return album;
@@ -319,7 +319,7 @@ export const resolvers = {
       }
     },
     eliminarAlbum: async (_root, { id }, context) => {
-      requireAuth(context, ['admin', 'user']);
+      requireAuth(context, ['admin']);
       try {
         const album = await deleteAlbum(id);
         return album;
@@ -331,7 +331,7 @@ export const resolvers = {
     },
 
     uploadAlbumImage: async (_root, { file }, context) => {
-      requireAuth(context, ['admin', 'user']);
+      requireAuth(context, ['admin']);
 
       try {
         const { createReadStream, filename, mimetype } = await file;
