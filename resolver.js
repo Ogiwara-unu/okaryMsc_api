@@ -28,7 +28,7 @@ import {
 import {
   addSongToPlaylist,
   removeSongFromPlaylist,
-   getSongsByPlaylist
+  getSongsByPlaylist
 } from "./services/playlistSong.js";
 import { get } from "http";
 
@@ -64,13 +64,13 @@ export const resolvers = {
 
     getSongImage: async (_root, { filename }) => {
       const result = await getSongImage(filename);
-      
+
       if (result.status !== 200) {
         throw new GraphQLError(result.message, {
           extensions: { code: result.status === 404 ? "NOT_FOUND" : "INTERNAL_SERVER_ERROR" }
         });
       }
-      
+
       return {
         file: result.file.toString('base64'),
         contentType: result.contentType
@@ -110,22 +110,22 @@ export const resolvers = {
       const items = await getAlbums(limit);
       return { items };
     },
-     getAlbumImage: async (_root, { filename }) => {
+    getAlbumImage: async (_root, { filename }) => {
       const result = await getAlbumImage(filename);
-      
+
       if (result.status !== 200) {
         throw new GraphQLError(result.message, {
           extensions: { code: result.status === 404 ? "NOT_FOUND" : "INTERNAL_SERVER_ERROR" }
         });
       }
-      
+
       return {
         file: result.file.toString('base64'),
         contentType: result.contentType
       };
     },
 
-     // Usuarios
+    // Usuarios
     usuario: async (_root, { id }) => {
       const user = await getUser(id);
       if (!user) {
@@ -151,7 +151,7 @@ export const resolvers = {
       return await getUser(playlist.user_id);
     },
   },
-   
+
 
   Mutation: {
     // Canciones
@@ -194,11 +194,11 @@ export const resolvers = {
      */
     uploadSongImage: async (_root, { file }, context) => {
       requireAuth(context, ['admin']);
-      
+
       try {
         const { createReadStream, filename, mimetype } = await file;
         const stream = createReadStream();
-        
+
         // Guardar el archivo temporalmente
         const filePath = `/tmp/${uuidv4()}-${filename}`;
         await new Promise((resolve, reject) =>
@@ -207,23 +207,23 @@ export const resolvers = {
             .on('finish', resolve)
             .on('error', reject)
         );
-        
+
         // Procesar el archivo
         const result = await uploadSongImage({
           path: filePath,
           originalname: filename,
           mimetype
         });
-        
+
         // Eliminar el archivo temporal
         fs.unlinkSync(filePath);
-        
+
         if (result.status !== 201) {
           throw new GraphQLError(result.message, {
             extensions: { code: "UPLOAD_ERROR" }
           });
         }
-        
+
         return {
           filename: result.filename,
           url: `/images/songs/${result.filename}`
@@ -234,7 +234,7 @@ export const resolvers = {
         });
       }
     },
-  
+
 
     // Playlists
     crearPlaylist: async (_root, { input }, context) => {
@@ -332,11 +332,11 @@ export const resolvers = {
 
     uploadAlbumImage: async (_root, { file }, context) => {
       requireAuth(context, ['admin', 'user']);
-      
+
       try {
         const { createReadStream, filename, mimetype } = await file;
         const stream = createReadStream();
-        
+
         const filePath = `/tmp/${uuidv4()}-${filename}`;
         await new Promise((resolve, reject) =>
           stream
@@ -344,21 +344,21 @@ export const resolvers = {
             .on('finish', resolve)
             .on('error', reject)
         );
-        
+
         const result = await saveAlbumImage({
           path: filePath,
           originalname: filename,
           mimetype
         });
-        
+
         fs.unlinkSync(filePath);
-        
+
         if (result.status !== 201) {
           throw new GraphQLError(result.message, {
             extensions: { code: "UPLOAD_ERROR" }
           });
         }
-        
+
         return {
           filename: result.filename,
           url: `/images/albums/${result.filename}`
@@ -373,17 +373,26 @@ export const resolvers = {
     // Usuarios
     crearUsuario: async (_root, { input }) => {
       try {
+        console.log("Datos recibidos:", input);
         const hashedPassword = await encryptPassword(input.password);
+        console.log("Contraseña hasheada:", hashedPassword);
+
         const newUser = await addUser({
           username: input.username,
           email: input.email,
           password: hashedPassword,
           role: input.role || "user"
         });
+
+        console.log("Usuario creado:", newUser);
         return newUser;
       } catch (error) {
-        throw new GraphQLError("Error al crear el usuario", {
-          extensions: { code: "INTERNAL_SERVER_ERROR", details: error.message }
+        console.error("Error detallado al crear usuario:", error);
+        throw new GraphQLError("Error al crear el usuario: " + error.message, {
+          extensions: {
+            code: "INTERNAL_SERVER_ERROR",
+            details: error.stack
+          }
         });
       }
     },

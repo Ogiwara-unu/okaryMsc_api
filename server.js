@@ -47,7 +47,10 @@ const upload = multer({
 });
 
 // Middlewares
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:4200', // o tu URL de frontend
+  credentials: true
+}));
 app.use(express.json());
 app.use(authMiddleware);
 
@@ -79,7 +82,13 @@ app.post('/api/upload-album-image', uploadAlbumImage.single('file'), (req, res) 
 });
 
 // Resto de tu configuración existente
-app.post('/login', getToken);
+app.post('/login', express.json(), async (req, res) => {
+  try {
+    await getToken(req, res);
+  } catch (error) {
+    res.status(401).json({ error: 'Invalid credentials' });
+  }
+});
 
 const typeDefs = await readFile('./schema.graphql', 'utf8');
 const graphSchema = makeExecutableSchema({ typeDefs, resolvers });
