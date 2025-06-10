@@ -18,7 +18,7 @@ import { uploadAlbumImage, saveAlbumImage } from './services/albumFileService.js
 const PORT = 9001;
 const app = express();
 
-// 1. Configuración de Multer para subida de archivos
+// Configuración de Multer para subida de archivos
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadPath = path.join(process.cwd(), 'assets', 'img', 'song');
@@ -46,20 +46,38 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 } // 5MB
 });
 
-// Middlewares
+// Middlewares básicos
 app.use(cors({
-  origin: 'http://localhost:4200', // o tu URL de frontend
+  origin: 'http://localhost:4200',
   credentials: true
 }));
 app.use(express.json());
-app.use(authMiddleware);
 
-// 2. Ruta para servir imágenes estáticas
+// Middleware de autenticación condicional
+app.use('/okaryMsc', (req, res, next) => {
+  // Lista de operaciones públicas que no requieren autenticación
+  const publicOperations = [
+    'GetSongs',         
+    'GetSongImage',     
+    'GetAlbums',        
+    'GetAlbumImage',    
+    'Login'             
+  ];
+
+  // Verifica si es una operación GraphQL y si es pública
+  if (req.body && req.body.operationName && publicOperations.includes(req.body.operationName)) {
+    return next(); // Salta la autenticación para operaciones públicas
+  }
+
+  // Aplica el middleware de autenticación para otras rutas
+  authMiddleware(req, res, next);
+});
+
+// Rutas para servir imágenes estáticas
 app.use('/images/songs', express.static(path.join(process.cwd(), 'assets', 'img', 'song')));
 app.use('/images/albums', express.static(path.join(process.cwd(), 'assets', 'img', 'album')));
 
-
-// 3. Ruta REST para prueba de subida de imágenes 
+// Ruta REST para subida de imágenes de canciones
 app.post('/api/upload-song-image', upload.single('file'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No se subió ningún archivo' });
@@ -70,7 +88,7 @@ app.post('/api/upload-song-image', upload.single('file'), (req, res) => {
   });
 });
 
-// 4. Ruta REST para subir imágenes de álbumes
+// Ruta REST para subir imágenes de álbumes
 app.post('/api/upload-album-image', uploadAlbumImage.single('file'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No se subió ningún archivo' });
@@ -81,15 +99,16 @@ app.post('/api/upload-album-image', uploadAlbumImage.single('file'), (req, res) 
   });
 });
 
-// Resto de tu configuración existente
+// Ruta de login
 app.post('/login', express.json(), async (req, res) => {
   try {
     await getToken(req, res);
   } catch (error) {
-    res.status(401).json({ error: 'Invalid credentials' });
+    res.status(401).json({ error: 'Credenciales inválidas' });
   }
 });
 
+// Configuración de Apollo Server
 const typeDefs = await readFile('./schema.graphql', 'utf8');
 const graphSchema = makeExecutableSchema({ typeDefs, resolvers });
 
@@ -98,38 +117,41 @@ await graphServer.start();
 
 const httpServer = createHttpServer(app);
 
+// Contexto para Apollo Server
 async function getContext({ req }) {
-    return { auth: req.auth };
+  return { auth: req.auth };
 }
 
-/** Manejo del WebSocket */
+// Configuración de WebSocket
 async function getWsContext({ connectionParams }) {
-    const accessToken = connectionParams?.accessToken;
-    if (accessToken) {
-        const payload = await decodeToken(accessToken);
-        return { user: payload };
-    }
-    return {};
+  const accessToken = connectionParams?.accessToken;
+  if (accessToken) {
+    const payload = await decodeToken(accessToken);
+    return { user: payload };
+  }
+  return {};
 }
 
 const wsServer = new WebSocketServer({ server: httpServer, path: '/okaryMsc' });
 useServer({ schema: graphSchema, context: getWsContext }, wsServer);
 
+// Middleware de GraphQL
 app.use('/okaryMsc', middleware(graphServer, { context: getContext }));
 
 // Middleware de manejo de errores
 app.use((err, req, res, next) => {
-    if (err instanceof multer.MulterError) {
-        return res.status(400).json({ error: err.message });
-    } else if (err.name === 'UnauthorizedError') {
-        return res.status(401).json({ error: 'Token inválido o expirado' });
-    }
-    console.error(err);
-    res.status(500).json({ error: 'Error interno del servidor' });
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({ error: err.message });
+  } else if (err.name === 'UnauthorizedError') {
+    return res.status(401).json({ error: 'Token inválido o expirado' });
+  }
+  console.error(err);
+  res.status(500).json({ error: 'Error interno del servidor' });
 });
 
+// Iniciar servidor
 httpServer.listen({ port: PORT }, () => {
-    console.log(`Servidor corriendo en: http://localhost:${PORT}/okaryMsc`);
-    console.log(`Ruta de imágenes: http://localhost:${PORT}/images/songs`);
-    console.log(`Ruta de imágenes álbumes: http://localhost:${PORT}/images/albums`);
+  console.log(`Servidor corriendo en: http://localhost:${PORT}/okaryMsc`);
+  console.log(`Ruta de imágenes: http://localhost:${PORT}/images/songs`);
+  console.log(`Ruta de imágenes álbumes: http://localhost:${PORT}/images/albums`);
 });
