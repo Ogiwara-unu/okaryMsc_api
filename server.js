@@ -17,13 +17,6 @@ import { uploadAlbumImage, saveAlbumImage } from './services/albumFileService.js
 
 const PORT = 9001;
 const app = express();
-const cors = require('cors');
-
-app.use(cors({
-  origin: ['http://localhost:8080', 'http://localhost:4200'],
-  credentials: true,
-  methods: ['GET', 'POST', 'OPTIONS']
-}));
 
 // Configuración de Multer para subida de archivos
 const storage = multer.diskStorage({
