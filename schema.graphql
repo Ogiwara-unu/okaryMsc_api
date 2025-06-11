@@ -97,7 +97,7 @@ type Mutation {
 
   # Playlists
   crearPlaylist(input: PlaylistInput!): Playlist
-  actualizarPlaylist(id: ID!, input: PlaylistInput!): Playlist
+  actualizarPlaylist(id: ID!, input: UpdatePlaylistInput!): Playlist
   eliminarPlaylist(id: ID!): Playlist
   agregarCancionAPlaylist(playlistId: ID!, songId: ID!): Playlist
   quitarCancionDePlaylist(playlistId: ID!, songId: ID!): Playlist
@@ -129,6 +129,12 @@ input PlaylistInput {
   name: String!
   description: String
   userId: ID!
+}
+
+input UpdatePlaylistInput {
+  name: String!
+  description: String
+  user_Id: ID!
 }
 
 input AlbumInput {
